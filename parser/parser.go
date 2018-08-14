@@ -8,12 +8,20 @@ import (
 	"github.com/rowanajmarshall/ham/token"
 )
 
+type (
+	prefixParseFunc func() ast.Expression
+	infixParseFunc  func(ast.Expression) ast.Expression
+)
+
 type Parser struct {
 	l      *lexer.Lexer
 	errors []string
 
 	curToken  token.Token
 	peekToken token.Token
+
+	prefixParseFuncs map[token.TokenType]prefixParseFunc
+	infixParseFuncs  map[token.TokenType]infixParseFunc
 }
 
 func New(l *lexer.Lexer) *Parser {
@@ -27,6 +35,14 @@ func New(l *lexer.Lexer) *Parser {
 	p.nextToken()
 
 	return p
+}
+
+func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParseFunc) {
+	p.prefixParseFuncs[tokenType] = fn
+}
+
+func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFunc) {
+	p.infixParseFuncs[tokenType] = fn
 }
 
 func (p *Parser) Errors() []string {
