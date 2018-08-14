@@ -8,6 +8,18 @@ import (
 	"github.com/rowanajmarshall/ham/token"
 )
 
+const (
+	// Defines the order of operations
+	_           int = iota
+	LOWEST          //
+	EQUALS          // ==
+	LESSGREATER     // > or <
+	SUM             // +
+	PRODUCT         // *
+	PREFIX          // -X or !X
+	CALL            // myFunc(X)
+)
+
 type (
 	prefixParseFunc func() ast.Expression
 	infixParseFunc  func(ast.Expression) ast.Expression
@@ -59,6 +71,16 @@ func (p *Parser) peekError(t token.TokenType) {
 	p.errors = append(p.errors, msg)
 }
 
+func (p *Parser) parseExpression(precedence int) ast.Expression {
+	prefix := p.prefixParseFuncs[p.curToken.Type]
+	if prefix == nil {
+		return nil
+	}
+
+	leftExp := prefix()
+	return leftExp
+}
+
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
 	case token.VAR:
@@ -66,8 +88,21 @@ func (p *Parser) parseStatement() ast.Statement {
 	case token.RETURN:
 		return p.parseReturnStatement()
 	default:
-		return nil
+		return p.parseExpressionStatement()
 	}
+}
+
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{
+		Token: p.curToken,
+	}
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.nextToken()
+	}
+
+	return stmt
 }
 
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
